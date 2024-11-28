@@ -1,0 +1,162 @@
+import pygame
+import random
+import sys
+
+# Initialize Pygame
+pygame.init()
+
+# Screen dimensions
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("SAVE APPLE 🍎")
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+
+# Load images
+background = pygame.image.load("C:/Users/dharm/apple_tree.jpg.jpg")  # Background image
+basket_img = pygame.image.load("C:/Users/dharm/Downloads/basket.png.png")      # Basket image
+apple_img = pygame.image.load("C:/Users/dharm/Downloads/apple.png.png")        # Apple image
+bonus_img = pygame.image.load("C:/Users/dharm/Downloads/pngwing.com (6).png")        # Bonus power-up image
+magnet_img = pygame.image.load("C:/Users/dharm/Downloads/pngwing.com (7).png")      # Magnet power-up image
+
+# Scale images
+basket_img = pygame.transform.scale(basket_img, (100, 60))
+apple_img = pygame.transform.scale(apple_img, (40, 40))
+bonus_img = pygame.transform.scale(bonus_img, (30, 30))
+magnet_img = pygame.transform.scale(magnet_img, (30, 30))
+
+# Game variables
+basket = {'x': WIDTH // 2, 'y': HEIGHT - 100, 'speed': 10}
+apples = []
+power_ups = []  # Power-up list
+apple_speed = 5
+score = 0
+lives = 3
+magnet_active = False  # Magnet effect
+magnet_timer = 0
+
+# Font
+font = pygame.font.SysFont("comicsans", 36)
+
+# Clock
+clock = pygame.time.Clock()
+
+def draw_game():
+    screen.blit(background, (0, 0))
+    screen.blit(basket_img, (basket['x'], basket['y']))
+    for apple in apples:
+        screen.blit(apple_img, (apple['x'], apple['y']))
+    for power_up in power_ups:
+        if power_up['type'] == 'bonus':
+            screen.blit(bonus_img, (power_up['x'], power_up['y']))
+        elif power_up['type'] == 'magnet':
+            screen.blit(magnet_img, (power_up['x'], power_up['y']))
+    score_text = font.render(f"Score: {score}", True, BLACK)
+    lives_text = font.render(f"Lives: {lives}", True, BLACK)
+    screen.blit(score_text, (10, 10))
+    screen.blit(lives_text, (10, 50))
+
+def add_apple():
+    x = random.randint(0, WIDTH - 40)
+    apples.append({'x': x, 'y': 0})
+
+def add_power_up():
+    power_type = random.choice(['bonus', 'magnet'])
+    x = random.randint(0, WIDTH - 30)
+    power_ups.append({'x': x, 'y': 0, 'type': power_type})
+
+def update_apples():
+    global lives, score, magnet_active
+    for apple in apples[:]:
+        if magnet_active:  # Magnet effect
+            if basket['x'] + 50 > apple['x'] > basket['x'] - 50:
+                apple['x'] += (basket['x'] + 50 - apple['x']) // 10
+
+        apple['y'] += apple_speed
+        # Check if apple is caught
+        if basket['x'] < apple['x'] < basket['x'] + 100 and basket['y'] < apple['y'] < basket['y'] + 60:
+            apples.remove(apple)
+            score += 10
+        # Check if apple hits the ground
+        elif apple['y'] > HEIGHT:
+            apples.remove(apple)
+            lives -= 2
+            if lives <= 0:
+                return False
+    return True
+
+def update_power_ups():
+    global score, magnet_active, magnet_timer
+    for power_up in power_ups[:]:
+        power_up['y'] += apple_speed
+        # Check if power-up is caught
+        if basket['x'] < power_up['x'] < basket['x'] + 100 and basket['y'] < power_up['y'] < basket['y'] + 60:
+            if power_up['type'] == 'bonus':
+                score += 50  # Bonus score
+            elif power_up['type'] == 'magnet':
+                magnet_active = True
+                magnet_timer = 300  # Magnet effect duration
+            power_ups.remove(power_up)
+        # Remove power-ups that fall out of screen
+        elif power_up['y'] > HEIGHT:
+            power_ups.remove(power_up)
+
+# Main game loop
+running = True
+apple_timer = 0
+power_up_timer = 0
+
+while running:
+    screen.fill(WHITE)
+    draw_game()
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT] and basket['x'] > 0:
+        basket['x'] -= basket['speed']
+    if keys[pygame.K_RIGHT] and basket['x'] < WIDTH - 100:
+        basket['x'] += basket['speed']
+
+    # Add apples and power-ups at intervals
+    apple_timer += 1
+    if apple_timer > 50:
+        add_apple()
+        apple_timer = 0
+
+    power_up_timer += 1
+    if power_up_timer > 300:  # Power-ups appear less frequently
+        add_power_up()
+        power_up_timer = 0
+
+    # Update positions
+    if not update_apples():
+        running = False
+    update_power_ups()
+
+    # Update magnet effect timer
+    if magnet_active:
+        magnet_timer -= 1
+        if magnet_timer <= 0:
+            magnet_active = False
+
+    pygame.display.flip()
+    clock.tick(30)
+
+# End of game screen
+screen.fill(WHITE)
+game_over_text = font.render("Game Over", True, RED)
+score_text = font.render(f"Your Score: {score}", True, BLACK)
+screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 2 - 50))
+screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, HEIGHT // 2 + 10))
+pygame.display.flip()
+pygame.time.wait(3000)
+
+pygame.quit()
+sys.exit()
